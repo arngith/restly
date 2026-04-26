@@ -473,47 +473,14 @@
         let currentVoiceBubble = null;
         const micBtn = document.getElementById('mic-btn');
 
-        let voiceTextQueue = [];
-        let isTypingVoice = false;
-        let voiceAudioQueue = [];
-        let isPlayingVoice = false;
-
-        // Fungsi untuk mengupdate teks di chat saat mode suara dengan efek typewriter
-        async function updateVoiceMessage(text) {
+        // Fungsi untuk mengupdate teks di chat saat mode suara
+        function updateVoiceMessage(text) {
             if (!currentVoiceBubble) {
                 const msgDiv = appendMessage('bot', '', 'current-voice-msg', false);
                 currentVoiceBubble = msgDiv.querySelector('.message-bubble');
-                currentVoiceBubble.fullContent = ""; // Simpan konten lengkap untuk parsing Markdown
             }
-
-            voiceTextQueue.push(text);
-            processVoiceTextQueue();
-        }
-
-        async function processVoiceTextQueue() {
-            if (isTypingVoice || voiceTextQueue.length === 0) return;
-
-            isTypingVoice = true;
-            const nextText = voiceTextQueue.shift();
-            const chars = nextText.split("");
-
-            for (let char of chars) {
-                currentVoiceBubble.fullContent += char;
-                // Render markdown secara bertahap
-                currentVoiceBubble.innerHTML = marked.parse(currentVoiceBubble.fullContent);
-
-                // Scroll otomatis ke bawah agar teks yang baru muncul terlihat
-                chatBox.scrollTo({
-                    top: chatBox.scrollHeight,
-                    behavior: 'smooth'
-                });
-
-                // Kecepatan ketik 30ms agar lebih terasa efek "berjalan"
-                await new Promise(resolve => setTimeout(resolve, 15));
-            }
-
-            isTypingVoice = false;
-            processVoiceTextQueue();
+            currentVoiceBubble.innerHTML += text + " ";
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
         }
 
         micBtn.onclick = () => {
@@ -523,9 +490,6 @@
                 stopVoiceMode();
             }
         };
-
-        let localAudioBuffer = [];
-        const bufferSize = 1024;
 
         async function startVoiceMode() {
             isVoiceActive = true;
@@ -544,103 +508,85 @@
             voiceSocket.onopen = () => console.log("Voice connected");
             voiceSocket.onmessage = async (event) => {
                 if (event.data instanceof ArrayBuffer) {
+                    // Data Suara
                     playVoiceChunk(event.data);
                 } else {
+                    // Data Teks (JSON)
                     try {
                         const data = JSON.parse(event.data);
-                        console.log("📝 Menerima data dari AI:", data);
-                        if (data.text) updateVoiceMessage(data.text);
-                        // Gunakan updateVoiceMessage juga untuk tool_result agar ada efek mengetik
-                        if (data.tool_result) updateVoiceMessage(data.tool_result);
-                        if (data.turnComplete) currentVoiceBubble = null;
+                        console.log("📝 Menerima teks dari AI:", data);
+                        if (data.text) {
+                            // Tampilkan teks AI di chat box
+                            updateVoiceMessage(data.text);
+                        }
+                        if (data.turnComplete) {
+                            currentVoiceBubble = null; // Reset bubble untuk giliran berikutnya
+                        }
                     } catch (e) {
                         console.error("JSON Parse Error:", e);
                     }
                 }
             };
 
+            // Audio Setup (Input)
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            await audioContext.resume();
-
-            try {
-                await audioContext.audioWorklet.addModule('/pcm-processor.js');
-            } catch (e) {
-                console.error("Gagal memuat AudioWorklet:", e);
-                appendMessage('bot', '❌ Gagal memuat modul audio.', 'voice-error', false);
-                stopVoiceMode();
-                return;
-            }
 
             let stream;
             try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
-                });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             } catch (err) {
                 console.error("Mic Error:", err);
-                appendMessage('bot', '❌ Gagal mengakses mikrofon.', 'voice-error', false);
+                appendMessage('bot', '❌ Gagal mengakses mikrofon. Pastikan mikrofon terpasang dan izin diberikan.', 'voice-error', false);
                 stopVoiceMode();
                 return;
             }
 
             micInput = audioContext.createMediaStreamSource(stream);
-            processor = new AudioWorkletNode(audioContext, 'pcm-processor');
 
-            // localAudioBuffer sudah didefinisikan di luar
+            // ScriptProcessor untuk mengambil audio mentah
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
 
             const targetSampleRate = 16000;
             const sourceSampleRate = audioContext.sampleRate;
             let lastVolumeLog = 0;
-            const volumeGain = 2.5;
 
-            processor.port.onmessage = (event) => {
+            processor.onaudioprocess = (e) => {
                 if (!isVoiceActive) return;
+                const inputData = e.inputBuffer.getChannelData(0);
 
-                const inputData = event.data;
-                for (let i = 0; i < inputData.length; i++) {
-                    localAudioBuffer.push(inputData[i]);
+                // Monitor Volume (untuk debug)
+                let sum = 0;
+                for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
+                const rms = Math.sqrt(sum / inputData.length);
+                if (Date.now() - lastVolumeLog > 2000) {
+                    console.log("🎤 Mic Volume Level:", rms.toFixed(4));
+                    lastVolumeLog = Date.now();
+                }
 
-                    if (localAudioBuffer.length >= bufferSize) {
-                        const chunkToProcess = new Float32Array(localAudioBuffer);
-                        localAudioBuffer = [];
+                // Resampling sederhana ke 16kHz
+                const resampledData = resampleAudio(inputData, sourceSampleRate, targetSampleRate);
 
-                        let sum = 0;
-                        for (let j = 0; j < chunkToProcess.length; j++) {
-                            sum += chunkToProcess[j] * chunkToProcess[j];
-                        }
-                        const rms = Math.sqrt(sum / chunkToProcess.length);
+                const pcmData = new Int16Array(resampledData.length);
+                for (let i = 0; i < resampledData.length; i++) {
+                    pcmData[i] = Math.max(-1, Math.min(1, resampledData[i])) * 0x7FFF;
+                }
 
-                        if (Date.now() - lastVolumeLog > 2000) {
-                            console.log("🎤 Mic RMS Level:", rms.toFixed(4));
-                            lastVolumeLog = Date.now();
-                        }
-
-                        const resampledData = resampleAudio(chunkToProcess, sourceSampleRate, targetSampleRate);
-
-                        const pcmData = new Int16Array(resampledData.length);
-                        for (let j = 0; j < resampledData.length; j++) {
-                            const val = resampledData[j] * volumeGain;
-                            pcmData[j] = Math.max(-1, Math.min(1, val)) * 0x7FFF;
-                        }
-
-                        if (voiceSocket && voiceSocket.readyState === WebSocket.OPEN) {
-                            voiceSocket.send(pcmData.buffer);
-                        }
-                    }
+                if (voiceSocket && voiceSocket.readyState === WebSocket.OPEN) {
+                    voiceSocket.send(pcmData.buffer);
                 }
             };
 
+            // Sambungkan input mic ke processor
             micInput.connect(processor);
+            // PERBAIKAN: Gunakan GainNode (Volume 0) agar suara tidak bocor (Echo)
             const silentNode = audioContext.createGain();
-            silentNode.gain.value = 0;
+            silentNode.gain.value = 0; // Mute suara mic ke speaker sendiri
+
             processor.connect(silentNode);
             silentNode.connect(audioContext.destination);
         }
 
+        // Fungsi Resampling Sederhana
         function resampleAudio(buffer, fromRate, toRate) {
             if (fromRate === toRate) return buffer;
             const ratio = fromRate / toRate;
@@ -661,13 +607,6 @@
             if (processor) processor.disconnect();
             if (micInput) micInput.disconnect();
             if (audioContext) audioContext.close();
-
-            voiceTextQueue = [];
-            isTypingVoice = false;
-            currentVoiceBubble = null;
-            localAudioBuffer = null;
-            bufferIndex = 0;
-
             console.log("Voice stopped");
         }
 
@@ -676,6 +615,7 @@
         async function playVoiceChunk(arrayBuffer) {
             if (!audioContext) return;
 
+            // Pastikan AudioContext aktif
             if (audioContext.state === 'suspended') {
                 await audioContext.resume();
             }
@@ -692,24 +632,23 @@
             const source = audioContext.createBufferSource();
             source.buffer = buffer;
 
+            // Booster Volume (2x lipat)
             const gainNode = audioContext.createGain();
             gainNode.gain.value = 2.0;
 
             source.connect(gainNode);
             gainNode.connect(audioContext.destination);
 
-            source.onended = () => {
-                isPlayingVoice = false;
-            };
-
+            // Penjadwalan Audio (Scheduling) agar tidak tumpang tindih
             const currentTime = audioContext.currentTime;
             if (nextStartTime < currentTime) {
-                nextStartTime = currentTime + 0.1;
+                nextStartTime = currentTime + 0.1; // Small buffer
             }
 
             source.start(nextStartTime);
             nextStartTime += buffer.duration;
 
+            // Sembunyikan pesan status awal saat AI mulai bicara
             const statusMsg = document.querySelector('.voice-status');
             if (statusMsg) statusMsg.style.display = 'none';
         }

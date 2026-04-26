@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 #test #test
 app = Flask(__name__)  
 
@@ -9,6 +9,10 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/pcm-processor.js')
+def serve_pcm_processor():
+    return send_from_directory('templates', 'pcm-processor.js', mimetype='application/javascript')
 
 @app.after_request
 def after_request(response):
