@@ -347,7 +347,7 @@
 
     <script>
         const HF_TOKEN = "{{ hf_token }}";
-        console.log("Debug: HF_TOKEN loaded from template:", HF_TOKEN ? HF_TOKEN.substring(0, 5) + "***" : "MISSING");
+        // console.log("Debug: HF_TOKEN loaded from template:", HF_TOKEN ? HF_TOKEN.substring(0, 5) + "***" : "MISSING");
         let currentConversationId = sessionStorage.getItem('edurobo_session_id');
         if (!currentConversationId) {
             currentConversationId = generateUUID();
@@ -423,7 +423,7 @@
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${HF_TOKEN}`
                     },
