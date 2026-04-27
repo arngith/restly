@@ -1,6 +1,9 @@
 import os
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from dotenv import load_dotenv
+
+load_dotenv()
 #test #test
 app = Flask(__name__)  
 
@@ -8,7 +11,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', hf_token=os.getenv("HF_TOKEN"))
 
 @app.route('/pcm-processor.js')
 def serve_pcm_processor():
@@ -41,7 +44,11 @@ def chat():
         api_url = "https://arnhuggingface-my-ai-agent.hf.space/edurobo/chat"
 
     try:
-        api_response = requests.post(api_url, json=payload, timeout=60)
+        hf_token = os.getenv("HF_TOKEN")
+        print(f"Debug: Mengirim request ke {api_url} dengan token: {hf_token[:5]}***")
+        headers = {"Authorization": f"Bearer {hf_token}"}
+        api_response = requests.post(api_url, json=payload, headers=headers, timeout=60)
+        print(f"Debug: Respons dari API: {api_response.status_code}")
         response_data = api_response.json()
         if response_data.get('status_code') == 200:
             bot_reply = response_data.get('response')
