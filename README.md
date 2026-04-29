@@ -1,5 +1,5 @@
 ---
-title: Edurobo
+title: Agent
 emoji: 👀
 colorFrom: pink
 colorTo: red
