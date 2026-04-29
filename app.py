@@ -11,7 +11,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 @app.route('/')
 def home():
-    return render_template('index.html', hf_token=os.getenv("HF_TOKEN"))
+    return render_template('index.html', hf_token=os.getenv("HF_TOKEN"), api_lokal=os.getenv("API_LOKAL"), api_public=os.getenv("API_PUBLIC"))
 
 @app.route('/pcm-processor.js')
 def serve_pcm_processor():
@@ -39,9 +39,9 @@ def chat():
     }
 
     if request.host.startswith('localhost') or request.host.startswith('127.0.0.1'):
-        api_url = "http://edurobo-api:7860/edurobo/chat"
+        api_url = os.getenv("API_LOKAL")
     else:
-        api_url = "https://arnhuggingface-my-ai-agent.hf.space/edurobo/chat"
+        api_url = os.getenv("API_PUBLIC")
 
     try:
         hf_token = os.getenv("HF_TOKEN")

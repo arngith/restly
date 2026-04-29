@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edurobo Chat</title>
+    <title>Agent Chat</title>
 
     <!-- Google Fonts: Poppins untuk kesan Modern -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -314,7 +314,7 @@
                 <i class="fa-solid fa-robot text-white"></i>
             </div>
             <div>
-                <div style="line-height: 1;">Edurobo</div>
+                <div style="line-height: 1;">Agent</div>
                 <small style="font-size: 0.75rem; color: #60efff; font-weight: 400;">
                     <i class="fa-solid fa-circle text-success" style="font-size: 0.5rem; margin-right: 4px;"></i>Online
                 </small>
@@ -331,7 +331,7 @@
         <!-- Area Input -->
         <div class="chat-input">
             <div class="input-group">
-                <input type="text" id="user-input" class="form-control" placeholder="Tanyakan sesuatu pada Edurobo..."
+                <input type="text" id="user-input" class="form-control" placeholder="Tanyakan sesuatu pada saya..."
                     autocomplete="off">
                 <button class="btn-mic" id="mic-btn" title="Gunakan Suara">
                     <i class="fa-solid fa-microphone"></i>
@@ -347,11 +347,13 @@
 
     <script>
         const HF_TOKEN = "{{ hf_token }}";
+        const API_LOKAL = "{{ api_lokal }}";
+        const API_PUBLIC = "{{ api_public }}";
         // console.log("Debug: HF_TOKEN loaded from template:", HF_TOKEN ? HF_TOKEN.substring(0, 5) + "***" : "MISSING");
-        let currentConversationId = sessionStorage.getItem('edurobo_session_id');
+        let currentConversationId = sessionStorage.getItem('agent_session_id');
         if (!currentConversationId) {
             currentConversationId = generateUUID();
-            sessionStorage.setItem('edurobo_session_id', currentConversationId);
+            sessionStorage.setItem('agent_session_id', currentConversationId);
         }
 
         function generateUUID() {
@@ -362,10 +364,10 @@
 
 
         function getValidSessionId() {
-            let id = sessionStorage.getItem('edurobo_session_id');
+            let id = sessionStorage.getItem('agent_session_id');
             if (!id || id.trim() === "" || id === "undefined" || id === "null") {
                 id = generateUUID();
-                sessionStorage.setItem('edurobo_session_id', id);
+                sessionStorage.setItem('agent_session_id', id);
                 console.log("Generated New ID:", id);
             }
             return id;
@@ -413,12 +415,12 @@
 
             try {
                 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const apiUrl = isLocalhost ? 'http://localhost:7861/edurobo/chat' : 'https://arnhuggingface-edurobo-api.hf.space/edurobo/chat';
+                const apiUrl = isLocalhost ? API_LOKAL : API_PUBLIC;
 
                 const payload = {
                     message: message,
                     history: [],
-                    conversation_id: activeConversationId // Pastikan key ini sama dengan di models.py
+                    conversation_id: activeConversationId
                 };
 
                 const response = await fetch(apiUrl, {
@@ -541,7 +543,7 @@
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = isLocalhost
                 ? `${wsProtocol}//${window.location.hostname}:7861/edurobo/ws/voice?token=${HF_TOKEN}`
-                : `wss://arnhuggingface-edurobo-api.hf.space/edurobo/ws/voice?token=${HF_TOKEN}`;
+                : `wss://arnhuggingface-agent-api.hf.space/edurobo/ws/voice?token=${HF_TOKEN}`;
 
             voiceSocket = new WebSocket(wsUrl);
             voiceSocket.binaryType = 'arraybuffer';
