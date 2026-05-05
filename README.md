@@ -1,12 +1,3 @@
----
-title: Restly AI
-emoji: 🤖
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
----
-
 # 🤖 Restly AI
 *Build Your Agent with REST API*
 
