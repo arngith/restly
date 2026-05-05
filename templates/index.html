@@ -349,6 +349,8 @@
         const HF_TOKEN = "{{ hf_token }}";
         const API_LOKAL = "{{ api_lokal }}";
         const API_PUBLIC = "{{ api_public }}";
+        const AGENT = "{{ agent }}";
+        const MODULE = "{{ module }}";
         // console.log("Debug: HF_TOKEN loaded from template:", HF_TOKEN ? HF_TOKEN.substring(0, 5) + "***" : "MISSING");
         let currentConversationId = sessionStorage.getItem('agent_session_id');
         if (!currentConversationId) {
@@ -415,7 +417,8 @@
 
             try {
                 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const apiUrl = isLocalhost ? API_LOKAL : API_PUBLIC;
+                const apiBase = isLocalhost ? API_LOKAL : API_PUBLIC;
+                const apiUrl = `${apiBase}/${AGENT}/${MODULE}`;
 
                 const payload = {
                     message: message,
@@ -542,8 +545,8 @@
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = isLocalhost
-                ? `${wsProtocol}//${window.location.hostname}:7861/edurobo/ws/voice?token=${HF_TOKEN}`
-                : `wss://arnhuggingface-agent-api.hf.space/edurobo/ws/voice?token=${HF_TOKEN}`;
+                ? `${wsProtocol}//${window.location.hostname}:7861/${AGENT}/ws/voice?token=${HF_TOKEN}`
+                : `wss://arnhuggingface-agent-api.hf.space/${AGENT}/ws/voice?token=${HF_TOKEN}`;
 
             voiceSocket = new WebSocket(wsUrl);
             voiceSocket.binaryType = 'arraybuffer';

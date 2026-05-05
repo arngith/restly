@@ -11,7 +11,12 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 @app.route('/')
 def home():
-    return render_template('index.html', hf_token=os.getenv("HF_TOKEN"), api_lokal=os.getenv("API_LOKAL"), api_public=os.getenv("API_PUBLIC"))
+    return render_template('index.html', 
+                           hf_token=os.getenv("HF_TOKEN"), 
+                           api_lokal=os.getenv("API_LOKAL"), 
+                           api_public=os.getenv("API_PUBLIC"),
+                           agent=os.getenv("AGENT"),
+                           module=os.getenv("MODULE"))
 
 @app.route('/pcm-processor.js')
 def serve_pcm_processor():
@@ -24,8 +29,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
-@app.route('/edurobo/chat', methods=['POST', 'OPTIONS'])
-def chat():
+@app.route('/<agent>/<module>', methods=['POST', 'OPTIONS'])
+def chat(agent, module):
     if request.method == 'OPTIONS':
         return jsonify({}), 200
         
@@ -39,9 +44,11 @@ def chat():
     }
 
     if request.host.startswith('localhost') or request.host.startswith('127.0.0.1'):
-        api_url = os.getenv("API_LOKAL")
+        api_base = os.getenv("API_LOKAL")
     else:
-        api_url = os.getenv("API_PUBLIC")
+        api_base = os.getenv("API_PUBLIC")
+
+    api_url = f"{api_base}/{agent}/{module}"
 
     try:
         hf_token = os.getenv("HF_TOKEN")
