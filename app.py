@@ -52,7 +52,7 @@ def chat(agent, module):
 
     try:
         hf_token = os.getenv("HF_TOKEN")
-        print(f"Debug: Mengirim request ke {api_url} dengan token: {hf_token[:5]}***")
+        # print(f"Debug: Mengirim request ke {api_url} dengan token: {hf_token[:5]}***")
         headers = {"Authorization": f"Bearer {hf_token}"}
         api_response = requests.post(api_url, json=payload, headers=headers, timeout=60)
         print(f"Debug: Respons dari API: {api_response.status_code}")
