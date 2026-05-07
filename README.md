@@ -29,6 +29,15 @@ An intelligent Restly management platform that automatically generates ready-to-
 -   **Infrastructure**: Sablier & Traefik (Local Hibernation & Proxy)
 -   **Platform**: Hugging Face Spaces
 
+# Prerequisites
+
+### 1. Get Google Gemini API Key
+To use the AI capabilities, you need a Gemini API key:
+1.  Go to [Google AI Studio](https://aistudio.google.com/).
+2.  Login with your Google account.
+3.  Click on **"Get API key"** and then **"Create API key in new project"**.
+4.  Copy the generated key.
+
 # Deployment
 
 ### Hugging Face Spaces
@@ -40,7 +49,7 @@ To deploy the **Restly** frontend to Hugging Face, follow these steps:
     -   `HF_TOKEN`: Your Hugging Face API Token.
     -   `API_PUBLIC`: Your public backend API URL.
     -   `AGENT`: Default Agent name.
-    -   `MODULE`: Default Module name.
+    -   `MODULE`: Default Module name (e.g., `chat`).
 3.  **Push Code**: Push this repository to your Space. Hugging Face will automatically build the container using the provided `Dockerfile`.
 
 # Usage
